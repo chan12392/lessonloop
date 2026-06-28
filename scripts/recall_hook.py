@@ -174,6 +174,15 @@ def main():
             score = sum(idf.get(t, 0) for t in hh) + LOW_WEIGHT * sum(idf.get(t, 0) for t in ll)
             if score > 0:
                 scored.append((score, r))
+
+    # tool 기반 트리거 — trigger_tools frontmatter 에 tool 명시된 카드는 토큰 무관 발화.
+    # (토큰 매칭 불가한 툴-사용패턴 예: Write/Edit 전 Read 누락 — 경로 토큰과 무관)
+    tool = payload.get("tool_name") or ""
+    token_slugs = {r.get("slug", "") for _, r in scored}
+    for r in rows:
+        tt = [t.strip() for t in (r.get("trigger_tools") or "").split(",") if t.strip()]
+        if tool and tool in tt and r.get("slug", "") not in token_slugs:
+            scored.append((score_min + 0.01, r))   # sentinel: 임계 통과(노이즈가드 유지)
     if not scored:
         return
     scored.sort(key=lambda x: -x[0])

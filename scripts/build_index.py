@@ -21,7 +21,7 @@ CARDS = cards_dir_cards()
 INDEX_CSV = index_file()
 INDEX_MD = cards_dir() / "lessons_index.md"
 
-FIELDS = ["id", "l1", "l2", "trigger", "rule", "enforce", "severity", "sources"]
+FIELDS = ["id", "l1", "l2", "trigger", "rule", "enforce", "severity", "sources", "trigger_tools"]
 
 
 def parse_front(text):
@@ -61,9 +61,9 @@ def main():
     # CSV (hot path)
     with io.open(INDEX_CSV, "w", encoding="utf-8", newline="") as f:
         w = csv.writer(f)
-        w.writerow(["id", "l1", "l2", "trigger", "rule", "slug"])
+        w.writerow(["id", "l1", "l2", "trigger", "rule", "slug", "trigger_tools"])
         for r in rows:
-            w.writerow([r["id"], r["l1"], r["l2"], r["trigger"], r["rule"], r["slug"]])
+            w.writerow([r["id"], r["l1"], r["l2"], r["trigger"], r["rule"], r["slug"], r.get("trigger_tools", "")])
 
     # MD 미러 (사람 읽기용)
     with io.open(INDEX_MD, "w", encoding="utf-8", newline="\n") as f:

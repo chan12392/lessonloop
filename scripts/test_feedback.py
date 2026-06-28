@@ -94,5 +94,39 @@ check("band health 0.80", abs(st_b["health"] - 0.8) < 0.001, str(st_b["health"])
 check("hold keeps prior B", st_b["mode"] == "B", st_b["mode"])
 check("hold keeps prior A", st_a["mode"] == "A", st_a["mode"])
 
+# ── 7. PRECISION — excerpt↔topic overlap (trigger-overlap 필터) ──
+print("[7] PRECISION (excerpt↔topic)")
+# cardReal(topic=foo) 는 실패 excerpt 에 foo → 진짜 재발 → weak
+# cardNoise(topic=baz) 는 실패 excerpt 에 baz 없음 → trigger-overlap → 제외
+ct = {"cardReal": {"foo", "bar"}, "cardNoise": {"baz"}}
+fires = [
+    {"asig": "P1", "fired": ["cardReal"]}, {"asig": "P1", "fired": ["cardReal"]},
+    {"asig": "P2", "fired": ["cardNoise"]}, {"asig": "P2", "fired": ["cardNoise"]},
+]
+fails = [{"asig": "P1", "kind": "objective_fail"}, {"asig": "P2", "kind": "objective_fail"}]
+fe = {"P1": "UnicodeDecodeError foo bar trace", "P2": "syntax error near unexpected token"}
+st = compute(fires, fails, ["cardReal", "cardNoise"], "A", ct, fe)
+check("cardReal weak (topic in excerpt)", "cardReal" in weak_slugs(st), str(weak_slugs(st)))
+check("cardNoise NOT weak (trigger-overlap, no topic)", "cardNoise" not in weak_slugs(st), str(weak_slugs(st)))
+check("only P1 recur (P2 filtered)", st["n_recur_asigs"] == 1, "n_recur=%d" % st["n_recur_asigs"])
+# 같은 데이터에 precision 인자 없으면(legacy) 둘 다 약한카드(co-occurrence)
+st2 = compute(fires, fails, ["cardReal", "cardNoise"], "A")
+check("legacy(no precision) keeps both", {"cardReal", "cardNoise"} == weak_slugs(st2), str(weak_slugs(st2)))
+
+# ── 8. VERDICT — agent repair_verdict(루프 클로저) ──
+print("[8] VERDICT (repair_verdict 존중)")
+ct = {"cardFix": {"foo"}}
+fires = [{"asig": "V1", "fired": ["cardFix"]}, {"asig": "V1", "fired": ["cardFix"]}]
+fails = [{"asig": "V1", "kind": "objective_fail"}]
+fe = {"V1": "foo error trace"}
+# verdict 없으면 약한카드(정상 recur, topic 겹침)
+st = compute(fires, fails, ["cardFix"], "A", ct, fe)
+check("no verdict → cardFix weak", "cardFix" in weak_slugs(st), str(weak_slugs(st)))
+# agent 가 already-fixed 판정 → 제외(재플래그 방지)
+st2 = compute(fires, fails, ["cardFix"], "A", ct, fe, {"cardFix": "already-fixed"})
+check("already-fixed verdict → excluded", "cardFix" not in weak_slugs(st2), str(weak_slugs(st2)))
+check("trigger-overlap verdict → excluded",
+      "cardFix" not in weak_slugs(compute(fires, fails, ["cardFix"], "A", ct, fe, {"cardFix": "trigger-overlap"})))
+
 print("\n==== %d PASS / %d FAIL ====" % (PASS, FAIL))
 sys.exit(1 if FAIL else 0)

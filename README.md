@@ -225,6 +225,9 @@ l1: 기술 | 에이전트행동 | 사용자선호   # technical / behavior / use
 l2: <facet, e.g. 인코딩>
 trigger: ".bat cp949 chcp"     # literal tokens, exact-matched against the action
 rule: <one-line imperative — usually this alone fixes it>
+trigger_tools: "Write,Edit"    # OPTIONAL — fire on these tool calls regardless of path
+                                # tokens (for tool-usage lessons token matching can't reach,
+                                # e.g. "Read before Write/Edit")
 enforce: lint | hook | guard | manual
 severity: low | medium | high | critical
 sources: <count before distillation>
