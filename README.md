@@ -320,7 +320,7 @@ mirror in the wrong place. The agent should normalize/confirm the absolute path 
 The agent runs `config_set.py --sync-dir "..."`. Because `sync_dir` lives in
 `lessonloop.json` (which `capture.py` reads on every call), the change takes effect
 **immediately — no hook re-install, no runtime restart**. This is how you configure a
-remote agent (e.g. talking to Roy over Telegram) without touching its machine.
+remote agent (e.g. talking to it over Telegram) without touching its machine.
 
 For path edits that *do* require re-wiring hooks (journal-dir / cards-dir at install time,
 or the Hermes skill registration), ask the agent to re-run `install.py` itself, then
@@ -330,16 +330,26 @@ restart its runtime.
 
 The core loop (capture → harvest → refine → promote → recall) and both recall paths are
 built and working for the supported runtimes. The project is still beta: hook contracts,
-card quality gates, and operational docs are being hardened with Roy/Chloe field tests.
-The following are designed and partially wired, maturing with real data:
+card quality gates, and operational docs are being hardened with field tests. The
+self-evaluation layer is now implemented:
 
-- **FEEDBACK** — `recall_log` ↔ `journal` join (via a shared `action_sig`) to flag *weak*
-  cards (fired but failed again) and *dead* cards (never fired). Logging is on; the
-  analysis pass lands once enough data accumulates.
-- **Governor** — a health metric (`1 − recurrence-rate`) that routes spare curation budget
-  between building (refine) and maintaining (prune/compact), with hysteresis + cold-start.
+- **FEEDBACK** ✅ — `feedback.py` joins `recall_log` ↔ `journal` via a shared `action_sig`
+  to flag *weak* cards (fired but the same action failed again) and *dead* cards (never
+  fired, flagged only — never auto-pruned, since dormant ≠ obsolete). Emits a per-agent
+  `.feedback_state-*.json` with `HEALTH = 1 − recurrence-rate`. Runs in `cycle.py` after
+  promote and reports weak cards in the session-start notice. Pure `compute()` + I/O split,
+  unit-tested (`test_feedback.py`, 19 assertions).
+- **Governor** ✅ — `HEALTH` drives a hysteresis mode (`A` build / `B` maintain / hold) with
+  a cold-start floor (too few cards or eligible actions → build). Reports only; it does not
+  yet auto-tune refine/compact parameters (that lands once more data accumulates).
+- **Weak-card escalation** ✅ — `recall_hook` loads the weak set and raises enforcement for
+  recurred cards (stronger marker / recurrence count), so warnings that were ignored get louder.
+- **Repair (optional LLM)** — `repair.py` rewrites weak-card rules into `staging/` (review
+  gate, never overwrites canonical). Provider-agnostic (OpenAI-compatible incl. z.ai/glm, or
+  Anthropic), **off by default**, enabled by an API key. Bring-your-own-key; `--show-prompt`
+  previews without a key.
 - **needs_human refiner** — realigning long-tail cards whose subject ≠ incidental tokens
-  needs an understanding agent (LLM plugin or agent self-witness); the triage seam exists.
+  still needs an understanding agent; the triage seam exists, the auto-realign is maturing.
 
 ---
 

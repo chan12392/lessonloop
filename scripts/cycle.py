@@ -59,11 +59,38 @@ def main():
         m = re.search(r"promoted=(\d+)", pr.stdout)
         if m:
             promoted = int(m.group(1))
-    if promoted > 0:
+
+    # ③ FEEDBACK — recall_log↔journal join → 약한카드/HEALTH/mode (보고 only, 자동조치 ❌)
+    fr = run(["feedback.py"])
+    weak, health, mode = 0, None, None
+    weak_names = ""
+    if fr and fr.stdout:
+        mw = re.search(r"weak=(\d+)", fr.stdout)
+        mh = re.search(r"health=([\d.]+)", fr.stdout)
+        mm = re.search(r"mode=(\w+)", fr.stdout)
+        if mw:
+            weak = int(mw.group(1))
+        if mh:
+            health = float(mh.group(1))
+        if mm:
+            mode = mm.group(1)
+        if weak > 0:
+            wn = re.search(r"^weak_cards: (.+)$", fr.stdout, re.M)
+            weak_names = wn.group(1).strip() if wn else ""
+
+    if promoted > 0 or weak > 0:
+        parts = []
+        if promoted > 0:
+            parts.append(f"지난 세션 실패에서 새 교훈 카드 {promoted}개 라이브(자동 승격). recall이 행동 직전 적용.")
+        if weak > 0:
+            names = weak_names or "(상세 .feedback_state-{agent}.json 참조)".format(agent=AGENT)
+            parts.append(f"⚠ 약한카드 {weak}개 재발(recall이 떴는데 같은 행동 또 실패 → rule 재검토): {names}")
+        if health is not None:
+            parts.append(f"HEALTH={health:.2f} 거버너mode={mode}")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "SessionStart",
-                "additionalContext": f"[LessonLoop] 지난 세션 실패에서 새 교훈 카드 {promoted}개 라이브(자동 승격). recall 이 행동 직전 적용.",
+                "additionalContext": "[LessonLoop] " + " ".join(parts),
             }
         }, ensure_ascii=False))
 

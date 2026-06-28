@@ -23,12 +23,28 @@ from pathlib import Path
 # 경로 진실원천
 SCRIPTS = Path(__file__).resolve().parent
 try:
-    from paths import index_file, recall_log as recall_log_path
+    from paths import index_file, recall_log as recall_log_path, cards_dir
 except ImportError:
-    # 하위 호환: 단독 실행 시 fallback
+    # 하위 호환: 단돏 실행 시 fallback
     ROOT = SCRIPTS.parent
     index_file = lambda: ROOT / "lessons_index.csv"
     recall_log_path = lambda a: ROOT / f"recall_log-{a}.jsonl"
+    cards_dir = lambda: ROOT
+
+
+def _weak_set():
+    """FEEDBACK 산출 .feedback_state-{agent}.json 의 약한카드 slug→recur_count.
+    에스컬레이션: recall 이 떴는데도 같은 행동이 또 실패한(재발) 카드는 강제등급 올림.
+    파일 없음/깨징 → 빈 dict(fail-open, 일반 recall 유지). 모듈 로드시 1회 캐시."""
+    d = {}
+    try:
+        st = json.loads((cards_dir() / f".feedback_state-{AGENT}.json").read_text(encoding="utf-8"))
+        for w in st.get("weak") or []:
+            if w.get("slug"):
+                d[w["slug"]] = w.get("recur_count", 0)
+    except Exception:
+        pass
+    return d
 
 def _agent():
     """--agent X / --agent=X / env LESSONLOOP_AGENT / 'default'. per-agent 로그 분리."""
@@ -43,6 +59,7 @@ def _agent():
 AGENT = _agent()
 INDEX = index_file()                               # cards/index 는 공유
 RECALL_LOG = recall_log_path(AGENT)                 # 로그는 per-agent (FEEDBACK 연료)
+WEAK = _weak_set()                                  # FEEDBACK 약한카드(재발) — AGENT 정의 후 호출
 MAX_CARDS = 2
 MIN_TOKEN_LEN = 3
 SCORE_MIN = 1.2          # 가중점수 미만이면 주입 안 함 (무관 명령 차단)
@@ -167,19 +184,28 @@ def main():
     if not top:
         return
     fired = [r.get("slug", "") for _, r in top]
+    weak_fired = [(r.get("slug", ""), r) for _, r in top if r.get("slug") in WEAK]
 
     if hermes:
         # Hermes pre_tool_call: block 반환. message=rule → 모델이 tool error로 수신, 다음 시도 반영.
         # CC additionalContext(부드러운주입)와 달리 강제 1회차단이므로 임계 2.5로 오탐 가드.
         r = top[0][1]
-        reason = (f"[LessonLoop 관련 교훈 — 이 행동 직전]\n"
+        recur = WEAK.get(r.get("slug", ""))
+        warn = f"  ⚠ 이 카드는 최근 {recur}회 재발(recall이 떴는데 또 실패) — rule 적용 필수.\n" if recur else ""
+        reason = (f"[LessonLoop 관련 교훈 — 이 행동 직전]\n{warn}"
                   f"• {r['rule']}  (카드: {r['slug']})")
         print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
     else:
         # Claude Code PreToolUse: additionalContext 주입(차단 아님, 부드러운 경고).
-        lines = ["[LESSONLOOP — 행동 직전 관련 교훈]"]
+        # 에스컬레이션: 재발 약한카드 포함 시 강제확인 헤더 + 카드별 ⚠재발N회 태그.
+        if weak_fired:
+            lines = ["[LESSONLOOP — 🔴 재발 카드 경고: 아래 rule, 같은 행동이 반복 실패함 — 반드시 적용 후 진행]"]
+        else:
+            lines = ["[LESSONLOOP — 행동 직전 관련 교훈]"]
         for _, r in top:
-            lines.append(f"• {r['rule']}  (카드: {r['slug']})")
+            recur = WEAK.get(r.get("slug", ""))
+            tag = f"  (⚠재발{recur}회, 강제적용)" if recur else ""
+            lines.append(f"• {r['rule']}  (카드: {r['slug']}){tag}")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
