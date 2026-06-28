@@ -1,0 +1,36 @@
+__pycache__/
+*.bak
+*.bak.*
+*.bak-*
+.DS_Store
+Thumbs.db
+.indexer-token
+
+# 런타임 데이터 (개인 신호 — OSS 비공개). per-agent 네임스페이스 포함.
+journal.jsonl
+journal-*.jsonl
+recall_log.jsonl
+recall_log-*.jsonl
+.capture_state.json
+.capture_state-*.json
+.harvest_state.json
+.harvest_state-*.json
+.promote.lock
+staging/*.md
+
+# 파생물(build_index 로 재생성) — churn·내용중복 방지
+lessons_index.csv
+lessons_index.md
+# 단 examples/ 의 샘플 인덱스는 공개(카드 형태 참고용)
+!examples/lessons_index.csv
+!examples/lessons_index.md
+
+# 로컬 경로 설정(머신별) — 추적X. 템플릿은 lessonloop.json.example
+lessonloop.json
+
+# 진짜 개인 카드(PII·개인 맥락 포함) — private 보관, OSS 비공개.
+# 루트 cards/ 만 매치(선행 /). examples/cards/ 는 공개 가상 샘플이므로 제외.
+/cards/
+
+# 개인 설계 정본(개인 맥락: 인프라/경로/에이전트명) — private 보관. README 가 OSS 설계 대체.
+/DESIGN.md

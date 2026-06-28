@@ -1,0 +1,7 @@
+{
+  "_comment": "복사해서 lessonloop.json 으로 저장. 두 키 생략시 기본=스크립트 위치(ROOT). 보통 빈 {} 로 두면 됨.",
+  "_keys": {
+    "journal_dir": "capture 가 journal-<agent>.jsonl 쓰는 경로",
+    "cards_dir": "cards/·lessons_index 경로(journal/recall_log 도 이 밑)"
+  }
+}

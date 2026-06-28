@@ -1,0 +1,8 @@
+# LessonLoop Index
+
+| l1 | l2 | trigger | rule | slug |
+|---|---|---|---|---|
+| 기술 | destructive-git | `git push --force force-with-lease main master protected rebase rewrite-history reflog` | `git push --force`(/`-f`)는 protected 브랜치(main/master)에 쓰지 않는다 — `--force-with-lease` 로 바꾸거나 rebase 전에 원격과 동기화 | git-force-push-protected-branch |
+| 기술 | secret-leak | `.env secrets API_KEY token password AWS_ git add committed .gitignore dotenv` | 비밀(API 키·토큰·.env)은 커밋 전 `.gitignore` 확인 — 이미 커밋됐으면 `git rm --cached` + 키 폐기(히스토리에 남음) | env-secrets-not-committed |
+| 사용자선호 | output-style | `간결 concise 요약 brief 보고 출력 답변 군더더기 존댓말` | 기술 보고는 간결하게 — 결론 먼저, 군더더기/반복 없이. 긴 서론·사과·과장 금지 | pref-concise-technical-output |
+| 에이전트행동 | completion-honesty | `완료 했다 fixed done 동작 확인 검증 stderr exit-code 테스트 재시작` | 완료" 보고 전 실제로 검증(명령 exit-code·로그·재실행) — "했다"는 증거 통과분만, 검증 전엔 "하는 중 | verify-before-claiming-done |
