@@ -344,10 +344,13 @@ self-evaluation layer is now implemented:
   yet auto-tune refine/compact parameters (that lands once more data accumulates).
 - **Weak-card escalation** ✅ — `recall_hook` loads the weak set and raises enforcement for
   recurred cards (stronger marker / recurrence count), so warnings that were ignored get louder.
-- **Repair (optional LLM)** — `repair.py` rewrites weak-card rules into `staging/` (review
-  gate, never overwrites canonical). Provider-agnostic (OpenAI-compatible incl. z.ai/glm, or
-  Anthropic), **off by default**, enabled by an API key. Bring-your-own-key; `--show-prompt`
-  previews without a key.
+- **Repair (agent self-witness, no API key)** — `repair.py` (default) joins the recurrence
+  evidence per weak card and writes `staging/repair-tasks-<agent>.md`. The **agent you're
+  already running** reads it plus [`RULE_SPEC.md`](./RULE_SPEC.md) (a prescriptive rewrite
+  spec that judges A=rule-weak / B=trigger-overlap / C=already-fixed *before* rewriting, so
+  even lower-tier models don't blindly rewrite good rules) and edits `cards/` directly. No key
+  needed. `--api` opts into provider-driven auto-rewrite (OpenAI-compatible incl. z.ai/glm, or
+  Anthropic) as a convenience.
 - **needs_human refiner** — realigning long-tail cards whose subject ≠ incidental tokens
   still needs an understanding agent; the triage seam exists, the auto-realign is maturing.
 

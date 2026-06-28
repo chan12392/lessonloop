@@ -78,13 +78,18 @@ def main():
             wn = re.search(r"^weak_cards: (.+)$", fr.stdout, re.M)
             weak_names = wn.group(1).strip() if wn else ""
 
+    # 약한카드 정비 task 출력(구동 에이전트 self-witness) — 키 불필요
+    if weak > 0:
+        run(["repair.py"])
+
     if promoted > 0 or weak > 0:
         parts = []
         if promoted > 0:
             parts.append(f"지난 세션 실패에서 새 교훈 카드 {promoted}개 라이브(자동 승격). recall이 행동 직전 적용.")
         if weak > 0:
             names = weak_names or "(상세 .feedback_state-{agent}.json 참조)".format(agent=AGENT)
-            parts.append(f"⚠ 약한카드 {weak}개 재발(recall이 떴는데 같은 행동 또 실패 → rule 재검토): {names}")
+            parts.append(f"⚠ 약한카드 {weak}개 재발: {names}")
+            parts.append(f"정비=self-witness → staging/repair-tasks-{AGENT}.md + RULE_SPEC.md §0(A=재작성/B=trigger-overlap/C=이미수정 판정) 읽고 cards/ 직접 편집 후 build_index.py")
         if health is not None:
             parts.append(f"HEALTH={health:.2f} 거버너mode={mode}")
         print(json.dumps({
