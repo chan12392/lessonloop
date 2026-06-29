@@ -62,6 +62,7 @@ def main():
     # harvest.py/refine.py(=objective_fail 경로) 호출 제거. soft→pref 카드만.
     hp = run(["harvest_pref.py"])
     pref_soft = pref_staged = 0
+    pref_excerpts = []
     if hp and hp.stdout:
         ms = re.search(r"soft 신호 (\d+)개", hp.stdout)
         if ms:
@@ -69,6 +70,8 @@ def main():
         mp = re.search(r"staged=(\d+)", hp.stdout)
         if mp:
             pref_staged = int(mp.group(1))
+        # self-witness: 백호(=현재 LLM)가 즉시 판단하도록 excerpt 목록 캡처(상한 5)
+        pref_excerpts = re.findall(r"^\s+- «(.+?)»", hp.stdout, re.M)[:5]
     pr = run(["promote.py", "--auto"])
     promoted = 0
     if pr and pr.stdout:
@@ -86,7 +89,8 @@ def main():
         if pref_staged > 0:
             parts.append(f"사용자선호(soft) 후보 {pref_staged}개 카드화(자동 승격).")
         elif pref_soft > 0:
-            parts.append(f"사용자선호 soft 신호 {pref_soft}개 대기(self-witness — harvest_pref --api 또는 직접 카드화).")
+            ex = " / ".join(f"«{e[:50]}»" for e in pref_excerpts) if pref_excerpts else "(상세 journal-{a}.jsonl)".format(a=AGENT)
+            parts.append(f"사용자선호 soft 신호 {pref_soft}개 → self-witness 판정(성향/노이즈) 후 카드화: {ex}")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "SessionStart",
