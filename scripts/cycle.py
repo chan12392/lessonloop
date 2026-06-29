@@ -13,6 +13,13 @@
 import sys, os, subprocess, re, json
 from pathlib import Path
 
+# stdout UTF-8 강제 — additionalContext 메시지(한글/em-dash) cp949 콘솔 출력 예외 →
+# except 삼김 → 세션 시작 알림 조용히 누락. 다른 훅과 동일 하드닝.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # 경로 진실원천
 SCRIPTS = Path(__file__).resolve().parent
 try:
@@ -51,8 +58,17 @@ def run(args):
 def main():
     if not JOURNAL.exists() or JOURNAL.stat().st_size == 0:
         return
-    run(["harvest.py"])
-    run(["refine.py"])
+    # 성향(사용자선호) 중심 — objective(기술) 카드는 폐기(2026-06-29)했으므로
+    # harvest.py/refine.py(=objective_fail 경로) 호출 제거. soft→pref 카드만.
+    hp = run(["harvest_pref.py"])
+    pref_soft = pref_staged = 0
+    if hp and hp.stdout:
+        ms = re.search(r"soft 신호 (\d+)개", hp.stdout)
+        if ms:
+            pref_soft = int(ms.group(1))
+        mp = re.search(r"staged=(\d+)", hp.stdout)
+        if mp:
+            pref_staged = int(mp.group(1))
     pr = run(["promote.py", "--auto"])
     promoted = 0
     if pr and pr.stdout:
@@ -60,38 +76,17 @@ def main():
         if m:
             promoted = int(m.group(1))
 
-    # ③ FEEDBACK — recall_log↔journal join → 약한카드/HEALTH/mode (보고 only, 자동조치 ❌)
-    fr = run(["feedback.py"])
-    weak, health, mode = 0, None, None
-    weak_names = ""
-    if fr and fr.stdout:
-        mw = re.search(r"weak=(\d+)", fr.stdout)
-        mh = re.search(r"health=([\d.]+)", fr.stdout)
-        mm = re.search(r"mode=(\w+)", fr.stdout)
-        if mw:
-            weak = int(mw.group(1))
-        if mh:
-            health = float(mh.group(1))
-        if mm:
-            mode = mm.group(1)
-        if weak > 0:
-            wn = re.search(r"^weak_cards: (.+)$", fr.stdout, re.M)
-            weak_names = wn.group(1).strip() if wn else ""
-
-    # 약한카드 정비 task 출력(구동 에이전트 self-witness) — 키 불필요
-    if weak > 0:
-        run(["repair.py"])
-
-    if promoted > 0 or weak > 0:
+    # feedback/repair(=objective 약한카드 정비)는 성향 전환에 무관 + 폐기카드 잔류
+    # recall_log 로 노이즈(폐기한 기술카드 slug 가 weak 로 보고됨) → cycle서 제거.
+    # feedback.py/repair.py 코드 자체는 보존(objective 복귀 시 복원 가능).
+    if promoted > 0 or pref_soft > 0 or pref_staged > 0:
         parts = []
         if promoted > 0:
             parts.append(f"지난 세션 실패에서 새 교훈 카드 {promoted}개 라이브(자동 승격). recall이 행동 직전 적용.")
-        if weak > 0:
-            names = weak_names or "(상세 .feedback_state-{agent}.json 참조)".format(agent=AGENT)
-            parts.append(f"⚠ 약한카드 {weak}개 재발: {names}")
-            parts.append(f"정비=self-witness → staging/repair-tasks-{AGENT}.md + RULE_SPEC.md §0(A=재작성/B=trigger-overlap/C=이미수정 판정) 읽고 cards/ 직접 편집 후 build_index.py")
-        if health is not None:
-            parts.append(f"HEALTH={health:.2f} 거버너mode={mode}")
+        if pref_staged > 0:
+            parts.append(f"사용자선호(soft) 후보 {pref_staged}개 카드화(자동 승격).")
+        elif pref_soft > 0:
+            parts.append(f"사용자선호 soft 신호 {pref_soft}개 대기(self-witness — harvest_pref --api 또는 직접 카드화).")
         print(json.dumps({
             "hookSpecificOutput": {
                 "hookEventName": "SessionStart",
