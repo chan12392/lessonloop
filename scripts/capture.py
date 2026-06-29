@@ -19,6 +19,14 @@ Stop훅 stdin(JSON): {transcript_path, session_id, ...}
 import sys, os, io, re, json, hashlib
 from pathlib import Path
 
+# stdin/stdout UTF-8 강제(Win cp949 콘솔에서 stdin 한글 깨짐 → payload 파싱 실패 방지).
+# pref_recall/recall_hook 동일 하드닝. file-encoding-bom-newline 계열.
+try:
+    sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # 경로 진실원천
 SCRIPTS = Path(__file__).resolve().parent
 try:

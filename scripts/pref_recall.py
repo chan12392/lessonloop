@@ -21,6 +21,14 @@ fail-open(절대 프롬프트 차단 안 함). 매칭 없으면 무출력.
 import sys, json, csv, io, re, math
 from pathlib import Path
 
+# stdin/stdout UTF-8 강제(Win cp949 콘솔에서 한글 프롬프트 깨짐 → 매칭 실패/조용히 fail 방지).
+# file-encoding-bom-newline 계열. 없으면 UserPromptSubmit 훅이 매 턴 조용히 빈 출력.
+try:
+    sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # 경로 진실원천
 SCRIPTS = Path(__file__).resolve().parent
 try:

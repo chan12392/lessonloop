@@ -20,6 +20,14 @@ stdin(JSON): {tool_name, tool_input:{command/file_path/content/...}, hook_event_
 import sys, os, json, csv, io, re, math, time, hashlib
 from pathlib import Path
 
+# stdin/stdout UTF-8 강제(Win cp949 콘솔에서 한글 command/file_path/content 깨짐 →
+# trigger 매칭 실패/조용히 fail 방지). pref_recall 동일 하드닝. file-encoding-bom-newline 계열.
+try:
+    sys.stdin.reconfigure(encoding="utf-8", errors="replace")
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # 경로 진실원천
 SCRIPTS = Path(__file__).resolve().parent
 try:
